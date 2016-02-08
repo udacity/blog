@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<a href = "http://cs253-udacity-1203.appspot.com/blog/newpost">New Post<a>
+<br>
+<br>
+  {% for p in posts %}
+    {{ p.render() | safe }}
+    <br><br>
+  {% endfor %}
+
+{% endblock %}
