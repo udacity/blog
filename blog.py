@@ -273,6 +273,8 @@ class Post(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     last_modified = db.DateTimeProperty(auto_now=True)
     created_by = db.TextProperty()
+    likes = db.IntegerProperty(required=True)
+    liked_by = db.ListProperty(str)
 
     @classmethod
     def by_post_name(cls, name):
@@ -304,6 +306,11 @@ class PostPage(BlogHandler):
         self.render("permalink.html", post=post)
 
 
+class LikeError(BlogHandler):
+    def get(self):
+        self.write("You can't like your own post & can only like a post once.")
+
+
 class EditDeleteError(BlogHandler):
     def get(self):
         self.write('You can only edit or delete posts you have created.')
@@ -325,7 +332,8 @@ class NewPost(BlogHandler):
 
         if subject and content:
             p = Post(parent=blog_key(), subject=subject, content=content,
-                     created_by=User.by_name(self.user.name).name)
+                     created_by=User.by_name(self.user.name).name, likes=0,
+                     liked_by=[])
 
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
@@ -373,6 +381,22 @@ class UpdatePost(BlogHandler):
             print "pid = ", str(pid)
 
 
+class LikePost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        author = post.created_by
+        current_user = self.user.name
+
+        if author == current_user or current_user in post.liked_by:
+            self.redirect('/likeError')
+        else:
+            post.likes = post.likes + 1
+            post.liked_by.append(current_user)
+            post.put()
+            self.redirect('/')  # TODO: figure out how to make page refresh
+
+
 class DeletePost(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -394,9 +418,11 @@ app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
                                ('/blog/([0-9]+)/updatepost', UpdatePost),
+                               ('/blog/([0-9]+)/like', LikePost),
                                ('/signup', Register),
                                ('/blog/([0-9]+)/deletepost', DeletePost),
                                ('/login', Login),
                                ('/logout', Logout),
-                               ('/editDeleteError', EditDeleteError)],
+                               ('/editDeleteError', EditDeleteError),
+                               ('/likeError', LikeError)],
                               debug=True)
