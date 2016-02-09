@@ -1,7 +1,7 @@
 # BEND: Blog Project (P1)
 
 Extension of the blog project students will build in the course.
-[Live demo here](cs253-udacity-1203.appspot.com)!
+[Live demo here](http://cs253-udacity-1203.appspot.com)!
 
 
 ---
