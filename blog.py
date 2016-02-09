@@ -176,12 +176,15 @@ class PostPage(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
+        print post
 
         if not post:
             self.error(404)
             return
 
         self.render("permalink.html", post = post)
+
+
 
 class NewPost(BlogHandler):
     def get(self):
@@ -200,14 +203,52 @@ class NewPost(BlogHandler):
         if subject and content:
             p = Post(parent = blog_key(), subject = subject, content = content)
             p.put()
+            # save value of pid for edit purposes
             self.redirect('/blog/%s' % str(p.key().id()))
+            pid = p.key().id()
+            print "pid = ", str(pid)
         else:
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
 
 
-###### Unit 2 HW's
+class UpdatePost(BlogHandler):
+    def get(self, post_id):
+        print "User.name = ",User.by_name(self.user)
+        print "self.user = ", self.user
+        if self.user == User.name:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            print "post = ", post   
+            error = ""      
+            self.render("updatepost.html", subject=post.subject, content=post.content, error = error)
+        else:
+            self.redirect("/login")
 
+    def post(self, post_id):
+        if not self.user:
+            self.redirect("/login")
+        else:
+            subject = self.request.get('subject')
+            content = self.request.get('content')
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            p = db.get(key)
+            p.subject = self.request.get('subject')
+            p.content = self.request.get('content')
+            p.put()
+            self.redirect('/blog/%s' % str(p.key().id()))
+            pid = p.key().id()
+            print "pid = ", str(pid)
+ 
+class DeletePost(BlogHandler):
+    def get(self, post_id):
+        if self.user:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            post.delete()
+            self.render("deletepost.html")
+        else:
+            self.redirect("/login")
 
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
@@ -311,7 +352,9 @@ app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/blog/?', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
+                               ('/blog/([0-9]+)/updatepost', UpdatePost),
                                ('/signup', Register),
+                               ('/blog/([0-9]+)/deletepost', DeletePost),
                                ('/login', Login),
                                ('/logout', Logout),
                                ],

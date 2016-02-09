@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-<a href = "http://cs253-udacity-1203.appspot.com/blog/newpost">New Post<a>
+<a href = "http://localhost:22080/blog/newpost">New Post<a>
 <br>
 <br>
   {% for p in posts %}
-    {{ p.render() | safe }}
-    <br><br>
+    {{ p.render() | safe }}  
+</br>
+
+
+<div align = "right">
+	<a href = "http://localhost:22080/blog/{{p.key().id()}}/updatepost">Edit<a>
+	<a href = "http://localhost:22080/blog/{{p.key().id()}}/deletepost">Delete<a>
+	</div>
+<br>
   {% endfor %}
 
 {% endblock %}
