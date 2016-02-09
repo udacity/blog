@@ -4,9 +4,10 @@ import random
 import hashlib
 import hmac
 from string import letters
-
 import webapp2
 import jinja2
+
+
 
 from google.appengine.ext import db
 
@@ -111,7 +112,6 @@ class User(db.Model):
     # we dont store pwd in the db, we store the hashed pwd
     pw_hash = db.StringProperty(required = True)
     email = db.StringProperty()
-
     # Convenience Fxns
 
     # looks up a user by id
@@ -153,104 +153,6 @@ class User(db.Model):
 
 
 ##### blog stuff
-
-def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
-
-class Post(db.Model):
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self)
-
-class BlogFront(BlogHandler):
-    def get(self):
-        posts = greetings = Post.all().order('-created')
-        self.render('front.html', posts = posts)
-
-class PostPage(BlogHandler):
-    def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-        print post
-
-        if not post:
-            self.error(404)
-            return
-
-        self.render("permalink.html", post = post)
-
-
-
-class NewPost(BlogHandler):
-    def get(self):
-        if self.user:
-            self.render("newpost.html")
-        else:
-            self.redirect("/login")
-
-    def post(self):
-        if not self.user:
-            self.redirect('/blog')
-
-        subject = self.request.get('subject')
-        content = self.request.get('content')
-
-        if subject and content:
-            p = Post(parent = blog_key(), subject = subject, content = content)
-            p.put()
-            # save value of pid for edit purposes
-            self.redirect('/blog/%s' % str(p.key().id()))
-            pid = p.key().id()
-            print "pid = ", str(pid)
-        else:
-            error = "subject and content, please!"
-            self.render("newpost.html", subject=subject, content=content, error=error)
-
-
-class UpdatePost(BlogHandler):
-    def get(self, post_id):
-        print "User.name = ",User.by_name(self.user)
-        print "self.user = ", self.user
-        if self.user == User.name:
-            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-            post = db.get(key)
-            print "post = ", post   
-            error = ""      
-            self.render("updatepost.html", subject=post.subject, content=post.content, error = error)
-        else:
-            self.redirect("/login")
-
-    def post(self, post_id):
-        if not self.user:
-            self.redirect("/login")
-        else:
-            subject = self.request.get('subject')
-            content = self.request.get('content')
-            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-            p = db.get(key)
-            p.subject = self.request.get('subject')
-            p.content = self.request.get('content')
-            p.put()
-            self.redirect('/blog/%s' % str(p.key().id()))
-            pid = p.key().id()
-            print "pid = ", str(pid)
- 
-class DeletePost(BlogHandler):
-    def get(self, post_id):
-        if self.user:
-            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-            post = db.get(key)
-            post.delete()
-            self.render("deletepost.html")
-        else:
-            self.redirect("/login")
-
-
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def valid_username(username):
     return username and USER_RE.match(username)
@@ -315,6 +217,7 @@ class Register(Signup):
             # creates a new User object
             u = User.register(self.username, self.password, self.email)
             # store in DB
+            print "name ===", self.username
             u.put()
 
             # set the cookie - from class BlogHandler
@@ -347,6 +250,125 @@ class Logout(BlogHandler):
         self.redirect('/blog')
 
 
+def blog_key(name = 'default'):
+    return db.Key.from_path('blogs', name)
+
+class Post(db.Model):
+    subject = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+    created_by = db.TextProperty()
+
+    @classmethod
+    def by_post_name(cls, name):
+        # select * from User where name = name
+        u = cls.all().filter('name =', name).get()
+        return u
+
+
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        return render_str("post.html", p = self)
+
+class BlogFront(BlogHandler):
+    def get(self):
+        posts = greetings = Post.all().order('-created')
+        self.render('front.html', posts = posts)
+
+class PostPage(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        print post
+
+        if not post:
+            self.error(404)
+            return
+
+        self.render("permalink.html", post = post)
+
+class EditDeleteError(BlogHandler):
+    def get(self):
+      self.write('You can only edit or delete posts you have created.')
+        
+
+
+class NewPost(BlogHandler):
+    def get(self):
+        if self.user:
+            self.render("newpost.html")
+        else:
+            self.redirect("/login")
+
+    def post(self):
+        if not self.user:
+            self.redirect('/blog')
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+
+        if subject and content:
+            p = Post(parent = blog_key(), subject = subject, content = content, created_by = User.by_name(self.user.name).name)
+            p.put()
+            self.redirect('/blog/%s' % str(p.key().id()))
+            pid = p.key().id()
+            print "pid = ", str(pid)
+            n1 = User.by_name(self.user.name).name
+            print "post created by", n1
+        else:
+            error = "subject and content, please!"
+            self.render("newpost.html", subject=subject, content=content, error=error)
+
+
+class UpdatePost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        n1 = post.created_by
+        n2 = self.user.name
+        print "n1 = ", n1
+        print "n2 = ", n2
+        if n1 == n2:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            print "post = ", post   
+            error = ""      
+            self.render("updatepost.html", subject=post.subject, content=post.content, error = error)
+        else:
+            self.redirect("/editDeleteError")
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect("/login")
+        else:
+            subject = self.request.get('subject')
+            content = self.request.get('content')
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            p = db.get(key)
+            p.subject = self.request.get('subject')
+            p.content = self.request.get('content')
+            p.put()
+            self.redirect('/blog/%s' % str(p.key().id()))
+            pid = p.key().id()
+            print "pid = ", str(pid)
+ 
+class DeletePost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        n1 = post.created_by
+        n2 = self.user.name
+        if n1 == n2:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            post.delete()
+            self.render("deletepost.html")
+        else:
+            self.redirect("/editDeleteError")
+
+
+
 
 app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/blog/?', BlogFront),
@@ -357,5 +379,6 @@ app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/blog/([0-9]+)/deletepost', DeletePost),
                                ('/login', Login),
                                ('/logout', Logout),
+                               ('/editDeleteError',EditDeleteError)
                                ],
                               debug=True)

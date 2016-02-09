@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<a href = "http://localhost:22080/blog/newpost">New Post<a>
+<a href = "http://cs253-udacity-1203.appspot.com/blog/newpost">New Post<a>
 <br>
 <br>
   {% for p in posts %}
@@ -10,8 +10,8 @@
 
 
 <div align = "right">
-	<a href = "http://localhost:22080/blog/{{p.key().id()}}/updatepost">Edit<a>
-	<a href = "http://localhost:22080/blog/{{p.key().id()}}/deletepost">Delete<a>
+	<a href = "http://cs253-udacity-1203.appspot.com/blog/{{p.key().id()}}/updatepost">Edit<a>
+	<a href = "http://cs253-udacity-1203.appspot.com/blog/{{p.key().id()}}/deletepost">Delete<a>
 	</div>
 <br>
   {% endfor %}
