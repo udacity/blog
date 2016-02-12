@@ -286,6 +286,17 @@ class Post(db.Model):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("post.html", p=self)
 
+    @property
+    def comments(self):
+        return Comment.all().filter( "post = ", str(self.key().id()) )
+
+class Comment(db.Model):
+    comment = db.StringProperty(required=True)
+    post = db.StringProperty(required=True)
+
+    @classmethod
+    def render(self):
+        self.render("comment.html")
 
 class BlogFront(BlogHandler):
     def get(self):
@@ -421,12 +432,82 @@ class DeletePost(BlogHandler):
             else:
                 self.redirect("/editDeleteError")
 
+class NewComment(BlogHandler):
+    def get(self, post_id):
+        #
+        # Display the new comment page
+        #
+        if not self.user:
+            error = "You must be logged in to comment"
+            self.render("login-form.html", error=error)
+            return
+        post = Post.get_by_id(int(post_id), parent=blog_key())
+        subject = post.subject
+        content = post.content
+        self.render("newcomment.html", subject=subject, content=content, pkey=post.key())
+    def post(self, post_id):
+        #
+        # New comment was made
+        #
+        # make sure post_id exists
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        if not post:
+            self.error(404)
+            return
+        # make sure user is signed in
+        if not self.user:
+            self.redirect('login')
+        # create comment
+        comment = self.request.get('comment')
+        if comment:
+            c = Comment(comment=comment, post=post_id, parent=self.user.key())
+            c.put()
+            self.redirect('/blog/%s' % str(post_id))
+        else:
+            error = "please provide a comment!"
+            self.render("permalink.html", post = post, content=content, error=error)
+
+class UpdateComment(BlogHandler):
+    def get(self, post_id, comment_id):
+        post = Post.get_by_id( int(post_id), parent=blog_key() )
+        comment = Comment.get_by_id( int(comment_id), parent=self.user.key() )
+        if comment:
+            self.render("updatecomment.html", subject=post.subject, content=post.content, comment=comment.comment)
+        else:
+            self.redirect('/commenterror')
+    def post(self, post_id, comment_id):
+        comment = Comment.get_by_id( int(comment_id), parent=self.user.key() )
+        if comment.parent().key().id() == self.user.key().id():
+            comment.comment = self.request.get('comment')
+            comment.put()
+        self.redirect( '/blog/%s' % str(post_id) )
+
+class DeleteComment(BlogHandler):
+    def get(self, post_id, comment_id):
+        post = Post.get_by_id( int(post_id), parent=blog_key() )
+        # this ensures the user created the comment
+        comment = Comment.get_by_id( int(comment_id), parent=self.user.key() )
+        if comment:
+            comment.delete()
+            self.redirect('/blog/%s' % str(post_id))
+        else:
+            self.redirect('/commenterror')
+
+class CommentError(BlogHandler):
+    def get(self):
+        self.write('You can only edit or delete comments you have created.')
+
 
 app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/blog/?', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
                                ('/blog/([0-9]+)/updatepost', UpdatePost),
+                               ('/blog/([0-9]+)/newcomment', NewComment),
+                               ('/blog/([0-9]+)/updatecomment/([0-9]+)', UpdateComment),
+                               ('/blog/([0-9]+)/deletecomment/([0-9]+)', DeleteComment),
+                               ('/commenterror', CommentError),
                                ('/blog/([0-9]+)/like', LikePost),
                                ('/signup', Register),
                                ('/blog/([0-9]+)/deletepost', DeletePost),

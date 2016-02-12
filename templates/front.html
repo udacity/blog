@@ -8,6 +8,10 @@
     {{ p.render() | safe }}
 </br>
 
+<div class="comment-count-container">
+  <span class="comment-count">{{p.comments.count()}} comments</span>
+  <a href="/blog/{{p.key().id()}}/newcomment">(add new comment)</a>
+</div>
 
 <div align = "right">
     <a href="/blog/{{p.key().id()}}/like">Like</a>
