@@ -430,7 +430,7 @@ class NewComment(BlogHandler):
         #
         if not self.user:
             error = "You must be logged in to comment"
-            self.render("login-form.html", error=error)
+            self.redirect("/login")
             return
         post = Post.get_by_id(int(post_id), parent=blog_key())
         subject = post.subject
