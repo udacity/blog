@@ -360,21 +360,24 @@ class NewPost(BlogHandler):
 
 class UpdatePost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-        n1 = post.created_by
-        n2 = self.user.name
-        print "n1 = ", n1
-        print "n2 = ", n2
-        if n1 == n2:
+        if not self.user:
+            self.redirect('/login')
+        else:
             key = db.Key.from_path('Post', int(post_id), parent=blog_key())
             post = db.get(key)
-            print "post = ", post
-            error = ""
-            self.render("updatepost.html", subject=post.subject,
-                        content=post.content, error=error)
-        else:
-            self.redirect("/editDeleteError")
+            n1 = post.created_by
+            n2 = self.user.name
+            print "n1 = ", n1
+            print "n2 = ", n2
+            if n1 == n2:
+                key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+                post = db.get(key)
+                print "post = ", post
+                error = ""
+                self.render("updatepost.html", subject=post.subject,
+                            content=post.content, error=error)
+            else:
+                self.redirect("/editDeleteError")
 
     def post(self, post_id):
         if not self.user:
@@ -394,34 +397,40 @@ class UpdatePost(BlogHandler):
 
 class LikePost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-        author = post.created_by
-        current_user = self.user.name
-
-        if author == current_user or current_user in post.liked_by:
-            self.redirect('/likeError')
+        if not self.user:
+            self.redirect('/login')
         else:
-            post.likes = post.likes + 1
-            post.liked_by.append(current_user)
-            post.put()
-            self.redirect('/')  # TODO: figure out how to make page refresh
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            author = post.created_by
+            current_user = self.user.name
+
+            if author == current_user or current_user in post.liked_by:
+                self.redirect('/likeError')
+            else:
+                post.likes = post.likes + 1
+                post.liked_by.append(current_user)
+                post.put()
+                self.redirect('/')
 
 
 class DeletePost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-        n1 = post.created_by
-        n2 = self.user.name
-
-        if n1 == n2:
+        if not self.user:
+            self.redirect('/login')
+        else:
             key = db.Key.from_path('Post', int(post_id), parent=blog_key())
             post = db.get(key)
-            post.delete()
-            self.render("deletepost.html")
-        else:
-            self.redirect("/editDeleteError")
+            n1 = post.created_by
+            n2 = self.user.name
+
+            if n1 == n2:
+                key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+                post = db.get(key)
+                post.delete()
+                self.render("deletepost.html")
+            else:
+                self.redirect("/editDeleteError")
 
 class NewComment(BlogHandler):
     def get(self, post_id):
