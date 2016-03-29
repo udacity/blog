@@ -26,3 +26,5 @@ to see the blog app running and http://localhost:8000 for the admin console!
 1. Users can like their own posts
 2. Users can edit other people's posts
 3. Code quality lacking: lots of pep8 errors, inconsistencies
+4. Logout isn't handled properly; Cookies not deleted
+5. Passwords stored in plain text, no hashing

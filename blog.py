@@ -62,8 +62,10 @@ class BlogHandler(webapp2.RequestHandler):
     # delete the cookie
     # sets the user cookie if to nothing -> user_id=; we keep the same Path,
     # hence we are overriding the same cookie
+
+    # BAD: sets "Cookie" instead of "Set-Cookie"
     def logout(self):
-        self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+        self.response.headers.add_header('Cookie', 'user_id=; Path=/')
 
     # checks to see if the user is logged in or not throughout the blog
     # checks the cookie
@@ -86,25 +88,10 @@ class MainPage(BlogHandler):
         self.write('Hello, Udacity!')
 
 
-# user stuff
-def make_salt(length=5):
-    return ''.join(random.choice(letters) for x in xrange(length))
-
-
-# h is what we store in the db
-def make_pw_hash(name, pw, salt=None):
-    if not salt:
-        salt = make_salt()
-
-    h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (salt, h)
-
-
 # takes name and password and checks if it matches
 # the value in the database
 def valid_pw(name, password, h):
-    salt = h.split(',')[0]
-    return h == make_pw_hash(name, password, salt)
+    return h == password
 
 
 # creates the ancestor element to store all our users
@@ -116,8 +103,7 @@ def users_key(group='default'):
 # user object that is stored in the db
 class User(db.Model):
     name = db.StringProperty(required=True)
-    # we dont store pwd in the db, we store the hashed pwd
-    pw_hash = db.StringProperty(required=True)
+    pw = db.StringProperty(required=True)
     email = db.StringProperty()
     # Convenience Fxns
 
@@ -141,8 +127,7 @@ class User(db.Model):
     # creates a new User object, but doesn't store in DB
     @classmethod
     def register(cls, name, pw, email=None):
-        pw_hash = make_pw_hash(name, pw)
-        return cls(parent=users_key(), name=name, pw_hash=pw_hash, email=email)
+        return cls(parent=users_key(), name=name, pw=pw, email=email)
 
     # https://www.udacity.com/course/viewer#!/c-cs253/l-48587898/m-48369757
     # returns the user if name and pws is a valid combination and None if not
@@ -153,7 +138,7 @@ class User(db.Model):
         # by_name calls @classmethod by_name, finds user associated by the name
         u = cls.by_name(name)
         # if user exists and the pw is valid
-        if u and valid_pw(name, pw, u.pw_hash):
+        if u and valid_pw(name, pw, u.pw):
             return u
 
 

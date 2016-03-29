@@ -6,7 +6,7 @@
 <br>
   {% for p in posts %}
     {{ p.render() | safe }}
-</br>
+<br>
 
 <div class="comment-count-container">
   <span class="comment-count">{{p.comments.count()}} comments</span>
