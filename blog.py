@@ -9,8 +9,8 @@ from string import letters
 from google.appengine.ext import db
 
 secret = 'adarsh'
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+templateDir = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(templateDir),
                                autoescape=True)
 
 
@@ -317,7 +317,7 @@ class PostPage(BlogHandler):
         self.render("permalink.html", post=post)
 
 
-class LikeError(BlogHandler):
+class Like_error(BlogHandler):
     def get(self):
         self.write("You can't like your own post & can only like a post once.")
 
@@ -369,15 +369,14 @@ class UpdatePost(BlogHandler):
             n2 = self.user.name
             print "n1 = ", n1
             print "n2 = ", n2
-            if n1 == n2:
-                key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-                post = db.get(key)
-                print "post = ", post
-                error = ""
-                self.render("updatepost.html", subject=post.subject,
-                            content=post.content, error=error)
-            else:
-                self.redirect("/editDeleteError")
+
+            # BAD: never actually checks to make sure n1 == n2 before allowing edit
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            print "post = ", post
+            error = ""
+            self.render("updatepost.html", subject=post.subject,
+                        content=post.content, error=error)
 
     def post(self, post_id):
         if not self.user:
@@ -405,7 +404,8 @@ class LikePost(BlogHandler):
             author = post.created_by
             current_user = self.user.name
 
-            if author == current_user or current_user in post.liked_by:
+            # BAD: users can like their own posts
+            if current_user in post.liked_by:
                 self.redirect('/likeError')
             else:
                 post.likes = post.likes + 1
@@ -514,5 +514,5 @@ app = webapp2.WSGIApplication([('/', BlogFront),
                                ('/login', Login),
                                ('/logout', Logout),
                                ('/editDeleteError', EditDeleteError),
-                               ('/likeError', LikeError)],
+                               ('/likeError', Like_error)],
                               debug=True)
